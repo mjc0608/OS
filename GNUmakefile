@@ -142,11 +142,11 @@ qemu-nox: $(IMAGES)
 
 qemu-gdb: $(IMAGES) .gdbinit
 	@echo "*** Now run 'gdb'." 1>&2
-	$(QEMU) $(QEMUOPTS) -s -S -p $(GDBPORT)
+	$(QEMU) $(QEMUOPTS) -S -gdb tcp::$(GDBPORT)
 
 qemu-gdb-nox: $(IMAGES) .gdbinit
 	@echo "*** Now run 'gdb'." 1>&2
-	$(QEMU) -nographic $(QEMUOPTS) -s -S -p $(GDBPORT)
+	$(QEMU) -nographic $(QEMUOPTS) -S -gdb tcp::$(GDBPORT)
 
 which-qemu:
 	@echo $(QEMU)

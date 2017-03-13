@@ -44,7 +44,6 @@ i386_init(void)
 	cprintf("chnum1: %d\n", chnum1);
 	cprintf("show me the sign: %+d, %+d\n", 1024, -1024);
 
-
 	// Test the stack backtrace function (lab 1 only)
 	test_backtrace(5);
 
