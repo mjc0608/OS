@@ -12,7 +12,8 @@
 #include <kern/kdebug.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
-
+#define WHITESPACE "\t\r\n "
+#define MAXARGS 16
 
 struct Command {
 	const char *name;
@@ -24,6 +25,8 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace", "Print backtrace", mon_backtrace },
+	{ "time", "time cycles", mon_time },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -38,6 +41,29 @@ mon_help(int argc, char **argv, struct Trapframe *tf)
 
 	for (i = 0; i < NCOMMANDS; i++)
 		cprintf("%s - %s\n", commands[i].name, commands[i].desc);
+	return 0;
+}
+
+int mon_time(int argc, char **argv, struct Trapframe *tf)
+{
+	uint64_t t1 = read_tsc(), t2;
+	char *call_arg[MAXARGS];
+	int i;
+
+	if (argc < 2) return 0;
+	for (i=0; i<argc-1; i++) {
+		call_arg[i] = argv[i+1];
+	}
+
+	for (i = 0; i < NCOMMANDS; i++) {
+		if (strcmp(argv[1], commands[i].name) == 0)
+			commands[i].func(argc-1, call_arg, tf);
+	}
+
+	t2 = read_tsc();
+
+	cprintf("kerninfo cycles: %ld\n", t2 - t1);
+
 	return 0;
 }
 
@@ -71,7 +97,7 @@ do_overflow(void)
     cprintf("Overflow success\n");
 }
 
-void
+void __attribute__((noinline))
 start_overflow(void)
 {
 	// You should use a techique similar to buffer overflow
@@ -86,7 +112,22 @@ start_overflow(void)
 
     char str[256] = {};
     int nstr = 0;
-    char *pret_addr;
+    char *pret_addr = (char*)read_pretaddr();
+    uint32_t target = (uint32_t)do_overflow + 3;
+    char *t = (char*)&target;
+    int i, k;
+
+    for (k=0; k<4; k++) {
+    	nstr = 0;
+	    for (i=0; i<(uint8_t)(*(t+k)); i++) {
+	    	str[i] = '0';
+	    	nstr++;
+	    }
+	    str[i]='\0';
+	    cprintf("%s%n\n", str, pret_addr+k);
+	}
+
+	return;
 
 	// Your code here.
     
@@ -94,7 +135,7 @@ start_overflow(void)
 
 }
 
-void
+void __attribute__((noinline))
 overflow_me(void)
 {
         start_overflow();
@@ -103,6 +144,31 @@ overflow_me(void)
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
+
+	uint32_t ebp = read_ebp();
+	uint32_t ret_addr = *(uint32_t*)(ebp+4);
+	int i;
+	struct Eipdebuginfo info;
+
+	cprintf("Stack backtrace:\n");
+	while (ebp!=0) {
+		debuginfo_eip(ret_addr, &info);
+
+		cprintf("  eip %08x  ebp %08x  args", ret_addr, ebp);
+		for (i=0; i<5 /*info.eip_fn_narg*/; i++) {
+			cprintf(" %08x", *(uint32_t*)(ebp+8+4*i));
+		}
+		cprintf("\n");
+
+		cprintf("          %s:%d: ", info.eip_file, info.eip_line);
+		for (i=0; i<info.eip_fn_namelen; i++)
+			cprintf("%c", info.eip_fn_name[i]);
+		cprintf("+%d\n", ret_addr - info.eip_fn_addr);
+
+		ebp = *(uint32_t*)ebp;
+		ret_addr = *(uint32_t*)(ebp+4);
+	}
+
 	// Your code here.
     overflow_me();
     cprintf("Backtrace success\n");
@@ -112,9 +178,6 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 
 
 /***** Kernel monitor command interpreter *****/
-
-#define WHITESPACE "\t\r\n "
-#define MAXARGS 16
 
 static int
 runcmd(char *buf, struct Trapframe *tf)
