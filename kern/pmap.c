@@ -408,7 +408,21 @@ static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
 	// Fill this function in
-	
+	if (size % PGSIZE != 0) {
+		panic("boot_map_region: size is not a multiple of PGSIZE\n");
+	}
+
+	pte_t *pte;
+	uintptr_t va_stop = va + size;
+
+	for (; va < va_stop; va += PGSIZE, pa += PGSIZE) {
+		pte_t *pte = pgdir_walk(pgdir, (void*)va, 1);
+		if (pte == NULL) {
+			panic("boot_map_region: no enough memory to alloc page table\n");
+		}
+		*pte = pa | perm | PTE_P;
+	}
+
 }
 
 //
@@ -425,6 +439,16 @@ static void
 boot_map_region_large(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
 	// Fill this function in
+	if (size % PTSIZE != 0) {
+		panic("boot_map_region_large: size is not a multiple of PTSIZE\n");
+	}
+
+	uintptr_t va_stop = va + size;
+
+	for (; va < va_stop; va += PTSIZE, pa += PTSIZE) {
+		pde_t *pde = pgdir + PDX(va);
+		*pde = pa | perm | PTE_P | PTE_PS;
+	}
 }
 
 //
@@ -455,6 +479,19 @@ int
 page_insert(pde_t *pgdir, struct Page *pp, void *va, int perm)
 {
 	// Fill this function in
+
+	pte_t *pte = pgdir_walk(pgdir, va, 1);
+	if (pte == NULL) {
+		return -E_NO_MEM;
+	}
+
+	if (*pte & PTE_P) {
+		// tlb_invalidate(pgdir, va);
+		page_remove(pgdir, va);
+	}
+
+	*pte = page2pa(pp) | perm | PTE_P;
+	pp->pp_ref++;
 	return 0;
 }
 
@@ -473,6 +510,17 @@ struct Page *
 page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
 	// Fill this function in
+
+	pte_t *pte = pgdir_walk(pgdir, va, 0);
+
+	if (pte_store != NULL) {
+		*pte_store = pte;
+	}
+
+	if (pte != NULL && (*pte | PTE_P)) {
+		return pa2page(PTE_ADDR(*pte));
+	}
+
 	return NULL;
 }
 
@@ -495,6 +543,16 @@ void
 page_remove(pde_t *pgdir, void *va)
 {
 	// Fill this function in
+	pte_t *pte;
+	struct Page *pg = page_lookup(pgdir, va, &pte);
+
+	if (pg != NULL) {
+		tlb_invalidate(pgdir, va);
+		page_decref(pg);
+		*pte = 0;
+	}
+
+
 }
 
 //
