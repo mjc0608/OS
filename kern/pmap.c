@@ -187,6 +187,9 @@ mem_init(void)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
 
+	boot_map_region(kern_pgdir, UPAGES, ROUNDUP(npages*sizeof(struct Page), PGSIZE)
+						, PADDR(pages), PTE_U | PTE_P);
+
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
 	// stack.  The kernel stack grows down from virtual address KSTACKTOP.
@@ -199,6 +202,9 @@ mem_init(void)
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
 
+	boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE,
+						PADDR(bootstack), PTE_U | PTE_W);
+
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
 	// Ie.  the VA range [KERNBASE, 2^32) should map to
@@ -208,8 +214,21 @@ mem_init(void)
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
 
+	// the size is too large, which will cause an overflow
+	uint32_t i, s = ~KERNBASE+1;
+	uint32_t va = KERNBASE, pa = 0;
+	for (i = 0; i < s; i+=PTSIZE, va += PTSIZE, pa += PTSIZE) {
+		pde_t *pde = kern_pgdir + PDX(va);
+		*pde = pa | PTE_P | PTE_PS | PTE_U | PTE_W;
+	}
+
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
+
+	// modify cr4 to support super page
+	uint32_t cr4 = rcr4();
+	cr4 |= CR4_PSE;
+	lcr4(cr4);
 
 	// Switch from the minimal entry page directory to the full kern_pgdir
 	// page table we just created.	Our instruction pointer should be
@@ -486,8 +505,13 @@ page_insert(pde_t *pgdir, struct Page *pp, void *va, int perm)
 	}
 
 	if (*pte & PTE_P) {
-		// tlb_invalidate(pgdir, va);
-		page_remove(pgdir, va);
+		if (page2pa(pp) == PTE_ADDR(*pte)) {
+			*pte = PTE_ADDR(*pte) | perm | PTE_P;
+			return 0;
+		}
+		else {
+			page_remove(pgdir, va);
+		}
 	}
 
 	*pte = page2pa(pp) | perm | PTE_P;
