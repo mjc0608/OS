@@ -329,6 +329,49 @@ page_alloc(int alloc_flags)
 	}
 }
 
+static inline uint32_t
+get_color_of_page(physaddr_t physaddr) {
+	return (physaddr >> 12) & 0x3;
+}
+
+struct Page *
+alloc_page_with_color(int alloc_flags, int color) {
+	int set_zero = alloc_flags & ALLOC_ZERO;
+
+	if (!page_free_list) {
+		return NULL;
+	}
+	else {
+		if (get_color_of_page(page2pa(page_free_list)) == color) {
+			struct Page *result = page_free_list;
+			page_free_list = page_free_list->pp_link;
+			result->pp_link = NULL;
+			if (set_zero) {
+				memset(page2kva(result), 0, PGSIZE);
+			}
+			return result;
+		}
+		else {
+			struct Page *prev = page_free_list;
+			struct Page *curr = prev->pp_link;
+			while (curr!=NULL) {
+				if (get_color_of_page(page2pa(curr)) == color) {
+					struct Page *result = curr;
+					prev->pp_link = curr->pp_link;
+					result->pp_link = NULL;
+					if (set_zero) {
+						memset(page2kva(result), 0, PGSIZE);
+					}
+					return result;
+				}
+				prev = curr;
+				curr = curr->pp_link;
+			}
+			return NULL;
+		}
+	}
+}
+
 //
 // Return a page to the free list.
 // (This function should only be called when pp->pp_ref reaches 0.)
