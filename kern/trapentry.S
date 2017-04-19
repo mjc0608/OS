@@ -47,6 +47,24 @@
  * Lab 3: Your code here for generating entry points for the different traps.
  */
 
+TRAPHANDLER_NOEC(handler0, 0)
+TRAPHANDLER_NOEC(handler1, 1)
+TRAPHANDLER_NOEC(handler2, 2)
+TRAPHANDLER_NOEC(handler3, 3)
+TRAPHANDLER_NOEC(handler4, 4)
+TRAPHANDLER_NOEC(handler5, 5)
+TRAPHANDLER_NOEC(handler6, 6)
+TRAPHANDLER_NOEC(handler7, 7)
+TRAPHANDLER(handler8, 8)
+TRAPHANDLER(handler10, 10)
+TRAPHANDLER(handler11, 11)
+TRAPHANDLER(handler12, 12)
+TRAPHANDLER(handler13, 13)
+TRAPHANDLER(handler14, 14)
+TRAPHANDLER_NOEC(handler16, 16)
+TRAPHANDLER(handler17, 17)
+TRAPHANDLER_NOEC(handler18, 18)
+TRAPHANDLER_NOEC(handler19, 19)
 
 
 .globl sysenter_handler;
@@ -61,4 +79,15 @@ sysenter_handler:
 /*
  * Lab 3: Your code here for _alltraps
  */
+_alltraps:
+	pushw $0
+	pushw %ds
+	pushw $0
+	pushw %es
+	pushal
 
+	movl $GD_KD, %eax
+	movw %ax, %ds
+	movw %ax, %es
+	pushl %esp
+	call trap

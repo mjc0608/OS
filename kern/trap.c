@@ -66,6 +66,44 @@ trap_init(void)
 
 	// LAB 3: Your code here.
 
+    extern void handler0();
+    extern void handler1();
+    extern void handler2();
+    extern void handler3();
+    extern void handler4();
+    extern void handler5();
+    extern void handler6();
+    extern void handler7();
+    extern void handler8();
+    extern void handler10();
+    extern void handler11();
+    extern void handler12();
+    extern void handler13();
+    extern void handler14();
+    extern void handler16();
+    extern void handler17();
+    extern void handler18();
+    extern void handler19();
+
+    SETGATE(idt[T_DIVIDE], 0, GD_KD, handler0, 0);
+    SETGATE(idt[T_DEBUG], 0, GD_KD, handler1, 0);
+    SETGATE(idt[T_NMI], 0, GD_KD, handler2, 0);
+    SETGATE(idt[T_BRKPT], 0, GD_KD, handler3, 0);
+    SETGATE(idt[T_OFLOW], 0, GD_KD, handler4, 0);
+    SETGATE(idt[T_BOUND], 0, GD_KD, handler5, 0);
+    SETGATE(idt[T_ILLOP], 0, GD_KD, handler6, 0);
+    SETGATE(idt[T_DEVICE], 0, GD_KD, handler7, 0);
+    SETGATE(idt[T_DBLFLT], 0, GD_KD, handler8, 0);
+    SETGATE(idt[T_TSS], 0, GD_KD, handler10, 0);
+    SETGATE(idt[T_SEGNP], 0, GD_KD, handler11, 0);
+    SETGATE(idt[T_STACK], 0, GD_KD, handler12, 0);
+    SETGATE(idt[T_GPFLT], 0, GD_KD, handler13, 0);
+    SETGATE(idt[T_PGFLT], 0, GD_KD, handler14, 0);
+    SETGATE(idt[T_FPERR], 0, GD_KD, handler16, 0);
+    SETGATE(idt[T_ALIGN], 0, GD_KD, handler17, 0);
+    SETGATE(idt[T_MCHK], 0, GD_KD, handler18, 0);
+    SETGATE(idt[T_SIMDERR], 0, GD_KD, handler19, 0);
+
 	// Per-CPU setup 
 	trap_init_percpu();
 }
@@ -159,6 +197,7 @@ trap(struct Trapframe *tf)
 {
 	// The environment may have set DF and some versions
 	// of GCC rely on DF being clear
+    cprintf("enter trap\n");
 	asm volatile("cld" ::: "cc");
 
 	// Check that interrupts are disabled.  If this assertion
