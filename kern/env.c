@@ -375,6 +375,7 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
             memset(binary+ph->p_offset, 0, ph->p_memsz-ph->p_filesz);
         }
     }
+    lcr3(PADDR(kern_pgdir));
 
     e->env_tf.tf_eip = prog->e_entry;
 

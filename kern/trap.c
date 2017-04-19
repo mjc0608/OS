@@ -88,7 +88,7 @@ trap_init(void)
     SETGATE(idt[T_DIVIDE], 0, GD_KD, handler0, 0);
     SETGATE(idt[T_DEBUG], 0, GD_KD, handler1, 0);
     SETGATE(idt[T_NMI], 0, GD_KD, handler2, 0);
-    SETGATE(idt[T_BRKPT], 0, GD_KD, handler3, 0);
+    SETGATE(idt[T_BRKPT], 0, GD_KD, handler3, 3);
     SETGATE(idt[T_OFLOW], 0, GD_KD, handler4, 0);
     SETGATE(idt[T_BOUND], 0, GD_KD, handler5, 0);
     SETGATE(idt[T_ILLOP], 0, GD_KD, handler6, 0);
