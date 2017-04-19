@@ -219,7 +219,7 @@ mem_init(void)
 	// Your code goes here:
 
 	boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE,
-						PADDR(bootstack), PTE_U | PTE_W);
+						PADDR(bootstack), PTE_P | PTE_W);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -235,7 +235,7 @@ mem_init(void)
 	uint32_t va = KERNBASE, pa = 0;
 	for (i = 0; i < s; i+=PTSIZE, va += PTSIZE, pa += PTSIZE) {
 		pde_t *pde = kern_pgdir + PDX(va);
-		*pde = pa | PTE_P | PTE_PS | PTE_U | PTE_W;
+		*pde = pa | PTE_P | PTE_PS | PTE_W;
 	}
 
 	// Check that the initial page directory has been set up correctly.
@@ -686,8 +686,22 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+    uint32_t start_va = ROUNDDOWN((int32_t)va, PGSIZE);
+    uint32_t end_va = ROUNDUP((uint32_t)va+len, PGSIZE);
+    int i;
 
+    for (i=start_va; i<end_va; i+=PGSIZE) {
+        pte_t *pte = pgdir_walk(env->env_pgdir, (void*)i, 0);
+        if (pte == NULL)
+            goto failed;
+        if (!(*pte & PTE_P & perm))
+            goto failed;
+    }
 	return 0;
+
+failed:
+    user_mem_check_addr = i < (uint32_t)va ? (uint32_t)va : i;
+    return -E_FAULT;
 }
 
 //

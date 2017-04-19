@@ -74,6 +74,36 @@ sysenter_handler:
 /*
  * Lab 3: Your code here for system call handling
  */
+	pushw %es
+	pushw %ds
+
+	pushfl
+	pushl %esi	/* return eip */
+	pushl %ebp	/* return esp */
+
+	/* args */
+	pushl %edi
+	pushl %ebx
+	pushl %ecx
+	pushl %edx
+	pushl %eax
+
+	/* ds and es */
+	movw $GD_KD, %ax
+	movw %ax, %ds
+	movw %ax, %es
+
+	call syscall
+	addl $20, %esp
+	popl %ecx
+	popl %edx
+	popfl
+
+	/* restore seg */
+	popw %ds
+	popw %es
+
+	sysexit
 
 
 /*

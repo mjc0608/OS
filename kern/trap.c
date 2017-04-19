@@ -25,7 +25,6 @@ struct Pseudodesc idt_pd = {
 	sizeof(idt) - 1, (uint32_t) idt
 };
 
-
 static const char *trapname(int trapno)
 {
 	static const char * const excnames[] = {
@@ -58,7 +57,6 @@ static const char *trapname(int trapno)
 	return "(unknown trap)";
 }
 
-
 void
 trap_init(void)
 {
@@ -85,24 +83,29 @@ trap_init(void)
     extern void handler18();
     extern void handler19();
 
-    SETGATE(idt[T_DIVIDE], 0, GD_KD, handler0, 0);
-    SETGATE(idt[T_DEBUG], 0, GD_KD, handler1, 0);
-    SETGATE(idt[T_NMI], 0, GD_KD, handler2, 0);
-    SETGATE(idt[T_BRKPT], 0, GD_KD, handler3, 3);
-    SETGATE(idt[T_OFLOW], 0, GD_KD, handler4, 0);
-    SETGATE(idt[T_BOUND], 0, GD_KD, handler5, 0);
-    SETGATE(idt[T_ILLOP], 0, GD_KD, handler6, 0);
-    SETGATE(idt[T_DEVICE], 0, GD_KD, handler7, 0);
-    SETGATE(idt[T_DBLFLT], 0, GD_KD, handler8, 0);
-    SETGATE(idt[T_TSS], 0, GD_KD, handler10, 0);
-    SETGATE(idt[T_SEGNP], 0, GD_KD, handler11, 0);
-    SETGATE(idt[T_STACK], 0, GD_KD, handler12, 0);
-    SETGATE(idt[T_GPFLT], 0, GD_KD, handler13, 0);
-    SETGATE(idt[T_PGFLT], 0, GD_KD, handler14, 0);
-    SETGATE(idt[T_FPERR], 0, GD_KD, handler16, 0);
-    SETGATE(idt[T_ALIGN], 0, GD_KD, handler17, 0);
-    SETGATE(idt[T_MCHK], 0, GD_KD, handler18, 0);
-    SETGATE(idt[T_SIMDERR], 0, GD_KD, handler19, 0);
+    SETGATE(idt[T_DIVIDE], 0, GD_KT, handler0, 0);
+    SETGATE(idt[T_DEBUG], 0, GD_KT, handler1, 0);
+    SETGATE(idt[T_NMI], 0, GD_KT, handler2, 0);
+    SETGATE(idt[T_BRKPT], 0, GD_KT, handler3, 3);
+    SETGATE(idt[T_OFLOW], 0, GD_KT, handler4, 0);
+    SETGATE(idt[T_BOUND], 0, GD_KT, handler5, 0);
+    SETGATE(idt[T_ILLOP], 0, GD_KT, handler6, 0);
+    SETGATE(idt[T_DEVICE], 0, GD_KT, handler7, 0);
+    SETGATE(idt[T_DBLFLT], 0, GD_KT, handler8, 0);
+    SETGATE(idt[T_TSS], 0, GD_KT, handler10, 0);
+    SETGATE(idt[T_SEGNP], 0, GD_KT, handler11, 0);
+    SETGATE(idt[T_STACK], 0, GD_KT, handler12, 0);
+    SETGATE(idt[T_GPFLT], 0, GD_KT, handler13, 0);
+    SETGATE(idt[T_PGFLT], 0, GD_KT, handler14, 0);
+    SETGATE(idt[T_FPERR], 0, GD_KT, handler16, 0);
+    SETGATE(idt[T_ALIGN], 0, GD_KT, handler17, 0);
+    SETGATE(idt[T_MCHK], 0, GD_KT, handler18, 0);
+    SETGATE(idt[T_SIMDERR], 0, GD_KT, handler19, 0);
+
+    extern void sysenter_handler();
+    wrmsr(SYSENTER_CS_MSR, GD_KT, 0);
+    wrmsr(SYSENTER_ESP_MSR, KSTACKTOP, 0);
+    wrmsr(SYSENTER_EIP_MSR, (uint32_t)sysenter_handler, 0);
 
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -181,6 +184,11 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+    switch(tf->tf_trapno) {
+        case T_PGFLT:
+            page_fault_handler(tf);
+            return;
+    }
 
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
