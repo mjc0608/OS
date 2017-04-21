@@ -11,6 +11,7 @@
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
 #include <kern/trap.h>
+#include <kern/env.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 #define WHITESPACE "\t\r\n "
@@ -28,6 +29,9 @@ static struct Command commands[] = {
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
 	{ "backtrace", "Print backtrace", mon_backtrace },
 	{ "time", "time cycles", mon_time },
+    { "c", "continue execution from current location", mon_c },
+    { "x", "display the memory", mon_x },
+    { "si", "print some information about current eip", mon_si },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -146,6 +150,50 @@ overflow_me(void)
 
 >>>>>>> lab2
 #endif
+
+int
+mon_c(int argc, char **argv, struct Trapframe *tf) {
+    if (tf==NULL) {
+        return -1;
+    }
+    tf->tf_eflags &= ~FL_TF;
+    env_run(curenv);
+    return 0;
+}
+
+int
+mon_si(int argc, char **argv, struct Trapframe *tf) {
+    struct Eipdebuginfo info;
+    int i;
+
+    if (tf==NULL) {
+        return -1;
+    }
+
+//    debuginfo_eip(tf->tf_eip, &info);
+	cprintf("eip %08x\n", tf->tf_eip);
+//	cprintf("%s:%d: ", info.eip_file, info.eip_line);
+//	for (i=0; i<info.eip_fn_namelen; i++)
+//	    cprintf("%c", info.eip_fn_name[i]);
+//	cprintf("+%d\n", tf->tf_eip - info.eip_fn_addr);
+
+    tf->tf_eflags |= FL_TF;
+    env_run(curenv);
+    return 0;
+}
+
+int
+mon_x(int argc, char **argv, struct Trapframe *tf) {
+    if (argc != 2) {
+        cprintf("x: run args\n");
+    }
+
+    uint32_t addr = strtol(argv[1], NULL, 16);
+    uint32_t val = *(uint32_t*)(addr);
+
+    cprintf("%d\n", val);
+    return 0;
+}
 
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)

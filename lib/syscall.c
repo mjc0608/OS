@@ -20,8 +20,7 @@ syscall(int num, int check, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
            "c" (a2),
            "b" (a3),
            "D" (a4)
-         : "cc", "memory");
-
+         : "cc", "memory", "%esi");
 
 	if(check && ret > 0)
 		panic("syscall %d returned %d (> 0)", num, ret);

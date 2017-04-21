@@ -124,6 +124,7 @@ env_init(void)
         envs[i].env_link = &envs[i+1];
         envs[i].env_status = ENV_FREE;
         envs[i].env_id = 0;
+        envs[i].heap_top = 0;
     }
 
     envs[NENV-1].env_link = NULL;
@@ -368,16 +369,22 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
 
     lcr3(PADDR(e->env_pgdir));
 
+    e->heap_top = 0;
+
     for (; ph < eph; ph++) {
         if (ph->p_type == ELF_PROG_LOAD) {
             region_alloc(e, (void*)ph->p_va, ph->p_memsz);
             memmove((void*)ph->p_va, binary+ph->p_offset, ph->p_filesz);
-            memset(binary+ph->p_offset, 0, ph->p_memsz-ph->p_filesz);
+            memset((uint32_t*)ph->p_va+ph->p_filesz, 0, ph->p_memsz-ph->p_filesz);
+            if (e->heap_top < ph->p_va+ph->p_memsz) {
+                e->heap_top = ph->p_va+ph->p_memsz;
+            }
         }
     }
     lcr3(PADDR(kern_pgdir));
 
     e->env_tf.tf_eip = prog->e_entry;
+    e->heap_top = ROUNDUP(e->heap_top, PGSIZE);
 
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
