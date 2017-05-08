@@ -51,6 +51,11 @@ run () {
 		echo $qemucommand 1>&2
 	fi
 
+	qemucommand="$qemu -nographic $qemuopts -serial file:jos.out -monitor null -no-reboot $qemuextra"
+	if $verbose; then
+		echo $qemucommand 1>&2
+	fi
+
 	t0=`date +%s.%N 2>/dev/null`
 	(
 		ulimit -t $timeout
@@ -153,7 +158,11 @@ runtest () {
 	if [ $? -ne 0 ]
 	then
 		rm -f obj/kern/init.o
+<<<<<<< HEAD
 		echo $make $2 failed 
+=======
+		echo $make $2 failed
+>>>>>>> lab3
 		exit 1
 	fi
 	# We just built a weird init.o that runs a specific test.  As

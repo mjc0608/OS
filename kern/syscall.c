@@ -22,6 +22,7 @@ sys_cputs(const char *s, size_t len)
 	// Destroy the environment if not.
 
 	// LAB 3: Your code here.
+    user_mem_assert(curenv, (void*)s, len, PTE_U | PTE_P);
 
 	// Print the string supplied by the user.
 	cprintf("%.*s", len, s);
@@ -274,11 +275,43 @@ sys_ipc_recv(void *dstva)
 	return 0;
 }
 
+static void
+region_alloc(struct Env *e, void *va, size_t len)
+{
+    uint32_t start_addr = ROUNDDOWN((uint32_t)va, PGSIZE);
+    uint32_t end_addr = ROUNDUP((uint32_t)va+len, PGSIZE);
+    int i;
+
+    for (i=start_addr; i<end_addr; i+=PGSIZE) {
+        struct Page *pp = page_alloc(0);
+        if (!pp) {
+            panic("failed to alloc page!\n");
+        }
+        int ret = page_insert(e->env_pgdir, pp, (void*)i, PTE_U | PTE_W);
+        if (ret!=0) {
+            panic("failed to insert page!\n");
+        }
+    }
+}
+
+
 static int
 sys_sbrk(uint32_t inc)
 {
 	// LAB3: your code sbrk here...
-	return 0;
+    // may buggy
+    uint32_t heap_top_roundup = ROUNDUP(curenv->heap_top, PGSIZE);
+    int i;
+
+    if (heap_top_roundup > curenv->heap_top + inc) {
+        curenv->heap_top += inc;
+        return curenv->heap_top;
+    }
+
+    region_alloc(curenv, (void*)heap_top_roundup, inc-(heap_top_roundup-curenv->heap_top));
+    curenv->heap_top += inc;
+
+	return curenv->heap_top;
 }
 
 // Dispatches to the correct kernel function, passing the arguments.
@@ -289,6 +322,22 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	// Return any appropriate return value.
 	// LAB 3: Your code here.
 
-	panic("syscall not implemented");
+    switch(syscallno) {
+        case SYS_cputs:
+            sys_cputs((char*)a1, a2);
+            return 0;
+        case SYS_cgetc:
+            return sys_cgetc();
+        case SYS_getenvid:
+            return sys_getenvid();
+        case SYS_env_destroy:
+            return sys_env_destroy(a1);
+        case SYS_map_kernel_page:
+            return sys_map_kernel_page((void*)a1, (void*)a2);
+        case SYS_sbrk:
+            return sys_sbrk(a1);
+    }
+
+    return -E_INVAL;
 }
 
