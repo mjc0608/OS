@@ -89,6 +89,7 @@ trap_init(void)
     extern void handler17();
     extern void handler18();
     extern void handler19();
+    extern void syscalltrapper();
 
     SETGATE(idt[T_DIVIDE], 0, GD_KT, handler0, 0);
     SETGATE(idt[T_DEBUG], 0, GD_KT, handler1, 0);
@@ -108,11 +109,8 @@ trap_init(void)
     SETGATE(idt[T_ALIGN], 0, GD_KT, handler17, 0);
     SETGATE(idt[T_MCHK], 0, GD_KT, handler18, 0);
     SETGATE(idt[T_SIMDERR], 0, GD_KT, handler19, 0);
+    SETGATE(idt[T_SYSCALL], 0, GD_KT, syscalltrapper, 3);
 
-    extern void sysenter_handler();
-    wrmsr(SYSENTER_CS_MSR, GD_KT, 0);
-    wrmsr(SYSENTER_ESP_MSR, KSTACKTOP, 0);
-    wrmsr(SYSENTER_EIP_MSR, (uint32_t)sysenter_handler, 0);
 
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -145,6 +143,23 @@ trap_init_percpu(void)
 	//
 	// LAB 4: Your code here:
 
+    thiscpu->cpu_ts.ts_esp0 = KSTACKTOP - thiscpu->cpu_id * (KSTKSIZE+KSTKGAP);
+    thiscpu->cpu_ts.ts_ss0 = GD_KD;
+
+    extern void sysenter_handler();
+    wrmsr(SYSENTER_CS_MSR, GD_KT, 0);
+    wrmsr(SYSENTER_ESP_MSR, thiscpu->cpu_ts.ts_esp0, 0);
+    wrmsr(SYSENTER_EIP_MSR, (uint32_t)sysenter_handler, 0);
+
+    gdt[(GD_TSS0 >> 3) + thiscpu->cpu_id] =
+            SEG16(STS_T32A, (uint32_t)(&thiscpu->cpu_ts), sizeof(struct Taskstate), 0);
+
+    gdt[(GD_TSS0 >> 3) + thiscpu->cpu_id].sd_s = 0;
+
+    ltr(GD_TSS0 + (thiscpu->cpu_id << 3));
+    lidt(&idt_pd);
+
+#if 0
 	// Setup a TSS so that we get the right stack
 	// when we trap to the kernel.
 	ts.ts_esp0 = KSTACKTOP;
@@ -161,6 +176,7 @@ trap_init_percpu(void)
 
 	// Load the IDT
 	lidt(&idt_pd);
+#endif
 }
 
 void
@@ -212,6 +228,7 @@ print_regs(struct PushRegs *regs)
 static void
 trap_dispatch(struct Trapframe *tf)
 {
+    int ret;
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
     switch(tf->tf_trapno) {
@@ -221,6 +238,15 @@ trap_dispatch(struct Trapframe *tf)
         case T_BRKPT:
         case T_DEBUG:
             monitor(tf);
+            return;
+        case T_SYSCALL:
+            ret = syscall(tf->tf_regs.reg_eax,
+                tf->tf_regs.reg_edx,
+                tf->tf_regs.reg_ecx,
+                tf->tf_regs.reg_ebx,
+                tf->tf_regs.reg_edi,
+                0);
+            tf->tf_regs.reg_eax = ret;
             return;
     }
 
@@ -270,6 +296,8 @@ trap(struct Trapframe *tf)
 		// Acquire the big kernel lock before doing any
 		// serious kernel work.
 		// LAB 4: Your code here.
+        lock_kernel();
+
 		assert(curenv);
 
 		// Garbage collect if current enviroment is a zombie
@@ -316,6 +344,9 @@ page_fault_handler(struct Trapframe *tf)
 
 	// LAB 3: Your code here.
     if ((tf->tf_cs & 3) == 0) {
+	    cprintf("[%08x] kernel fault va %08x ip %08x\n",
+		    curenv->env_id, fault_va, tf->tf_eip);
+	    print_trapframe(tf);
         panic("page fault in kernel mode\n");
     }
 
@@ -359,3 +390,17 @@ page_fault_handler(struct Trapframe *tf)
 	env_destroy(curenv);
 }
 
+void
+sysenter_helper(struct Trapframe *tf) {
+    uint32_t ret;
+    curenv->env_tf = *tf;
+    lock_kernel();
+    ret = syscall(tf->tf_regs.reg_eax,
+            tf->tf_regs.reg_edx,
+            tf->tf_regs.reg_ecx,
+            tf->tf_regs.reg_ebx,
+            tf->tf_regs.reg_edi,
+            0);
+    tf->tf_regs.reg_eax = ret;
+    unlock_kernel();
+}

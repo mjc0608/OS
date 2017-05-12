@@ -68,6 +68,8 @@ i386_init(void)
 	// cprintf("chnum1: %d\n", chnum1);
 	// cprintf("show me the sign: %+d, %+d\n", 1024, -1024);
 
+    kernel_lock_init();
+
 	// Lab 2 memory management initialization functions
 	mem_init();
 
@@ -82,9 +84,15 @@ i386_init(void)
 	// Lab 4 multitasking initialization functions
 	pic_init();
 
+    // Should always have idle processes at first.
+	int i;
+	for (i = 0; i < NCPU; i++)
+		ENV_CREATE(user_idle, ENV_TYPE_IDLE);
+
 	// Acquire the big kernel lock before waking up APs
 	// Your code here:
 
+    lock_kernel();
 	// Starting non-boot CPUs
 	boot_aps();
 
@@ -94,17 +102,20 @@ i386_init(void)
 	lock_kernel();
 #endif
 
-	// Should always have idle processes at first.
-	int i;
-	for (i = 0; i < NCPU; i++)
-		ENV_CREATE(user_idle, ENV_TYPE_IDLE);
 
 #if defined(TEST)
 	// Don't touch -- used by grading script!
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
-	ENV_CREATE(user_primes, ENV_TYPE_USER);
+#if 1
+	ENV_CREATE(user_dumbfork, ENV_TYPE_USER);
+#endif
+
+#if 0
+    for (i = 0; i < 10; i++)
+        ENV_CREATE(user_yield, ENV_TYPE_USER);
+#endif
 #endif // TEST*
 
 	// Schedule and run the first user environment!
@@ -166,8 +177,12 @@ mp_main(void)
 	//
 	// Your code here:
 
+//    cprintf("cpu %x start yeilding\n", cpunum());
+    lock_kernel();
+    sched_yield();
+
 	// Remove this after you finish Exercise 4
-	for (;;);
+	//for (;;);
 }
 
 /*

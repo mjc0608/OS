@@ -183,11 +183,6 @@ mem_init(void)
 	check_page_free_list(1);
 	check_page_alloc();
 	check_page();
-<<<<<<< HEAD
-	//check_n_pages();
-	//check_realloc_npages();
-=======
->>>>>>> lab3
 
 	//////////////////////////////////////////////////////////////////////
 	// Now we set up virtual memory
@@ -237,26 +232,33 @@ mem_init(void)
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
 
-<<<<<<< HEAD
-	// Initialize the SMP-related parts of the memory map
-	mem_init_mp();
-=======
-	// the size is too large, which will cause an overflow
+#if 0
+    // the size is too large, which will cause an overflow
 	uint32_t i, s = ~KERNBASE+1;
 	uint32_t va = KERNBASE, pa = 0;
 	for (i = 0; i < s; i+=PTSIZE, va += PTSIZE, pa += PTSIZE) {
 		pde_t *pde = kern_pgdir + PDX(va);
 		*pde = pa | PTE_P | PTE_PS | PTE_W;
 	}
->>>>>>> lab3
+#else
+    boot_map_region(kern_pgdir, KERNBASE, IOMEMBASE-KERNBASE,
+                        0, PTE_P | PTE_W);
+
+#endif
+
+	// Initialize the SMP-related parts of the memory map
+    // [WARNING] be care about the memory mapping
+	mem_init_mp();
 
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
 
+#if 0
 	// modify cr4 to support super page
 	uint32_t cr4 = rcr4();
 	cr4 |= CR4_PSE;
 	lcr4(cr4);
+#endif
 
 	// Switch from the minimal entry page directory to the full kern_pgdir
 	// page table we just created.	Our instruction pointer should be
@@ -309,6 +311,13 @@ mem_init_mp(void)
 	//
 	// LAB 4: Your code here:
 
+    int i;
+    for (i=0; i<NCPU; i++) {
+        uint32_t top = KSTACKTOP - i * (KSTKGAP+KSTKSIZE);
+        boot_map_region(kern_pgdir, top - KSTKSIZE,
+                KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W | PTE_P);
+    }
+
 }
 
 // --------------------------------------------------------------
@@ -350,6 +359,7 @@ page_init(void)
 	size_t i;
 	page_free_list = NULL;
 	for (i = 1; i < npages_basemem; i++) {
+        if (i == MPENTRY_PADDR/PGSIZE) continue;
 		pages[i].pp_ref = 0;
 		pages[i].pp_link = page_free_list;
 		page_free_list = &pages[i];
@@ -550,9 +560,10 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 	}
 
 	pte_t *pte;
-	uintptr_t va_stop = va + size;
+//	uintptr_t va_stop = va + size;
+    int i;
 
-	for (; va < va_stop; va += PGSIZE, pa += PGSIZE) {
+	for (i=0; i<size; i+=PGSIZE, va += PGSIZE, pa += PGSIZE) {
 		pte_t *pte = pgdir_walk(pgdir, (void*)va, 1);
 		if (pte == NULL) {
 			panic("boot_map_region: no enough memory to alloc page table\n");
@@ -953,9 +964,6 @@ check_kern_pgdir(void)
 	}
 
 
-
-
-	
 	// check IO mem (new in lab 4)
 	for (i = IOMEMBASE; i < -PGSIZE; i += PGSIZE)
 		assert(check_va2pa(pgdir, i) == i);

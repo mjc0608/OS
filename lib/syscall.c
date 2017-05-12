@@ -2,17 +2,24 @@
 
 #include <inc/syscall.h>
 #include <inc/lib.h>
+#include <inc/x86.h>
 
 static inline int32_t
 syscall(int num, int check, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
 {
 	int32_t ret;
+
 	asm volatile(
          //Lab 3: Your code here
+         "pushl %%ebp\n\t"
+
          "movl %%esp, %%ebp\n\t"
          "leal syscall_back%=, %%esi\n\t"
          "sysenter\n"
          "syscall_back%=:\n\t"
+
+         "movl %%ebp, %%esp\n\t"
+         "popl %%ebp\n\t"
 
          : "=a" (ret)
          : "a" (num),
@@ -73,7 +80,10 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 int
 sys_page_map(envid_t srcenv, void *srcva, envid_t dstenv, void *dstva, int perm)
 {
-	return syscall(SYS_page_map, 1, srcenv, (uint32_t) srcva, dstenv, (uint32_t) dstva, perm);
+	//return syscall(SYS_page_map, 1, srcenv, (uint32_t) srcva, dstenv, (uint32_t) dstva, perm);
+    uint32_t envs = (srcenv<<16) | (0xffff & dstenv);
+    //cprintf("envs: %x %x %x\n", envs, srcenv, dstenv);
+    return syscall(SYS_page_map, 1, envs, (uint32_t) srcva, (uint32_t) dstva, perm, 0);
 }
 
 int

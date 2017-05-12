@@ -158,11 +158,7 @@ runtest () {
 	if [ $? -ne 0 ]
 	then
 		rm -f obj/kern/init.o
-<<<<<<< HEAD
 		echo $make $2 failed 
-=======
-		echo $make $2 failed
->>>>>>> lab3
 		exit 1
 	fi
 	# We just built a weird init.o that runs a specific test.  As

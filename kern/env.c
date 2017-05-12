@@ -420,7 +420,7 @@ env_create(uint8_t *binary, size_t size, enum EnvType type)
     int ret;
 
     ret = env_alloc(&e, 0);
-    cprintf("env: %x\n", e-envs);
+//    cprintf("env: %x\n", e-envs);
     if (ret != 0) {
         panic("failed to create env: %e\n", ret);
         return;
@@ -558,10 +558,12 @@ env_run(struct Env *e)
 
 	// LAB 3: Your code here.
 
-//	cprintf("env_run 0x%x\n", e);
-//  cprintf("curr env:0x%x\n", curenv);
-
+#if 0
+	cprintf("env_run 0x%x, eip 0x%x, esp 0x%x\n", e->env_id, e->env_tf.tf_eip, e->env_tf.tf_esp);
+    if (curenv) cprintf("curr env:0x%x\n", curenv->env_id);
+#endif
     if (!e) panic("try to run a NULL env!\n");
+    //cprintf("cpu %x run env %x\n", cpunum(), e->env_id);
 
     if (curenv)
         curenv->env_status = ENV_RUNNABLE;
@@ -570,7 +572,7 @@ env_run(struct Env *e)
     curenv->env_runs++;
     lcr3(PADDR(curenv->env_pgdir));
 
+    unlock_kernel();
     env_pop_tf(&curenv->env_tf);
-
 }
 

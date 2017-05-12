@@ -66,6 +66,7 @@ TRAPHANDLER_NOEC(handler16, 16)
 TRAPHANDLER(handler17, 17)
 TRAPHANDLER_NOEC(handler18, 18)
 TRAPHANDLER_NOEC(handler19, 19)
+TRAPHANDLER_NOEC(syscalltrapper, 0x30)
 
 
 .globl sysenter_handler;
@@ -75,35 +76,31 @@ sysenter_handler:
 /*
  * Lab 3: Your code here for system call handling
  */
-	pushw %es
-	pushw %ds
-
+	pushw $0  /* padding4 */
+	pushw %ss
+	pushl %ebp
 	pushfl
-	pushl %esi	/* return eip */
-	pushl %ebp	/* return esp */
-
-	/* args */
-	pushl %edi
-	pushl %ebx
-	pushl %ecx
-	pushl %edx
-	pushl %eax
-
-	/* ds and es */
-	movw $GD_KD, %ax
-	movw %ax, %ds
-	movw %ax, %es
-
-	call syscall
-	addl $20, %esp
-	popl %ecx
+	pushw $0  /* padding3 */
+	pushw %cs
+	pushl %esi
+	pushl $0  /* tr_err */
+	pushl $-1  /* tr_trapno */
+	pushw $0  /* padding2 */
+	pushw %ds
+	pushw $0  /* padding1 */
+	pushw %es
+	pushal
+	pushl %esp /* Trapframe *tf */
+	call sysenter_helper
+	popl %esp
+	popal
+	popl %es
+	popl %ds
+	addl $8, %esp
 	popl %edx
+	addl $4, %esp
 	popfl
-
-	/* restore seg */
-	popw %ds
-	popw %es
-
+	popl %ecx
 	sysexit
 
 
