@@ -342,8 +342,10 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
     dst_env->env_ipc_perm = perm;
     dst_env->env_tf.tf_regs.reg_eax = 0;
     dst_env->env_status = ENV_RUNNABLE;
+    //cprintf("fucking %x get %d from fucking %x\n", dst_env->env_id, value, curenv->env_id);
     return 0;
 }
+
 
 // Block until a value is ready.  Record that you want to receive
 // using the env_ipc_recving and env_ipc_dstva fields of struct Env,
@@ -362,13 +364,16 @@ sys_ipc_recv(void *dstva)
 	// LAB 4: Your code here.
 	//panic("sys_ipc_recv not implemented");
 
-    if ((uint32_t)dstva < UTOP && ROUNDUP((uint32_t)dstva, PGSIZE)!=(uint32_t)dstva)
+    if ((uint32_t)dstva < UTOP && ROUNDUP((uint32_t)dstva, PGSIZE)!=(uint32_t)dstva) {
+        // panic("fuck????????");
         return -E_INVAL;
+    }
 
     curenv->env_status = ENV_NOT_RUNNABLE;
     curenv->env_ipc_dstva = dstva;
     curenv->env_ipc_recving = 1;
-    sched_yield();
+
+    // cprintf("thisenv=%x\n", curenv->env_id);
 
 	return 0;
 }
@@ -472,9 +477,13 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
             break;
         case SYS_ipc_try_send:
             ret = sys_ipc_try_send(a1, a2, (void*)a3, a4);
+            curenv->env_tf.tf_regs.reg_eax = ret;
             break;
         case SYS_ipc_recv:
             ret = sys_ipc_recv((void*)a1);
+            curenv->env_tf.tf_regs.reg_eax = ret;
+            sched_yield();
+            ret = 0;
             break;
     }
 

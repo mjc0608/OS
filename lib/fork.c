@@ -28,7 +28,7 @@ pgfault(struct UTrapframe *utf)
 	//   (see <inc/memlayout.h>).
 
 	// LAB 4: Your code here.
-    if ((vpd[PDX(addr)] & PTE_P) == 0) panic("page not present");
+    if ((vpd[PDX(addr)] & PTE_P) == 0) panic("page not present, addr=0x%x", addr);
     if ((vpt[PGNUM(addr)] & PTE_P) == 0) panic("page not present");
     if ((vpt[PGNUM(addr)] & PTE_COW) == 0) panic("not a COW page");
     if ((err & FEC_WR) == 0) panic("not a write fault");

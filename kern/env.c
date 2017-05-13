@@ -566,21 +566,15 @@ env_run(struct Env *e)
     if (!e) panic("try to run a NULL env!\n");
     //cprintf("cpu %x run env %x\n", cpunum(), e->env_id);
 
-    if (curenv)
-        curenv->env_status = ENV_RUNNABLE;
-    curenv = e;
-    curenv->env_status = ENV_RUNNING;
-    curenv->env_runs++;
-	if ((e->env_tf.tf_cs & 3) == 3)
-        curenv->env_tf.tf_eflags |= FL_IF;
-    else {
-        print_trapframe(&e->env_tf);
-        assert(0);
-    }
-    lcr3(PADDR(curenv->env_pgdir));
-
-    //cprintf("cpu %x env %x enter user by env_run\n", cpunum(), e->env_id);
+	if (curenv != e) {
+		if (curenv && curenv->env_status == ENV_RUNNING)
+			curenv->env_status = ENV_RUNNABLE;
+		curenv = e;
+		curenv->env_status = ENV_RUNNING;
+		curenv->env_runs++;
+		lcr3(PADDR(curenv->env_pgdir));
+	}
+	curenv->env_tf.tf_eflags |= FL_IF;
     unlock_kernel();
     env_pop_tf(&curenv->env_tf);
 }
-

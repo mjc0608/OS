@@ -441,7 +441,7 @@ page_fault_handler(struct Trapframe *tf)
         utrapframe = (struct UTrapframe*)(UXSTACKTOP - sizeof(struct UTrapframe));
     }
 
-    cprintf("[ %x ]fault_va: %x, fault_eip: %x, fault_esp: %x, utrapframe: %x\n", curenv->env_id, fault_va, tf->tf_eip, tf->tf_esp, utrapframe);
+    //cprintf("[ %x ]fault_va: %x, fault_eip: %x, fault_esp: %x, utrapframe: %x\n", curenv->env_id, fault_va, tf->tf_eip, tf->tf_esp, utrapframe);
     //print_trapframe(tf);
     user_mem_assert(curenv, utrapframe, sizeof(struct UTrapframe), PTE_P | PTE_U | PTE_W);
     utrapframe->utf_esp = tf->tf_esp;
@@ -462,7 +462,7 @@ sysenter_helper(struct Trapframe *tf) {
     lock_kernel();
     uint32_t ret;
     curenv->env_tf = *tf;
-    //cprintf("env %x enter kernel: sysenter\n", curenv->env_id);
+//    cprintf("env %x enter kernel: sysenter\n", curenv->env_id);
     ret = syscall(tf->tf_regs.reg_eax,
             tf->tf_regs.reg_edx,
             tf->tf_regs.reg_ecx,
@@ -474,6 +474,6 @@ sysenter_helper(struct Trapframe *tf) {
 
     //assert(0);
     tf->tf_regs.reg_eax = ret;
-    //cprintf("cpu %x env %x enter user: sysexit\n", cpunum(), curenv->env_id);
+//    cprintf("cpu %x env %x enter user: sysexit\n", cpunum(), curenv->env_id);
     unlock_kernel();
 }
