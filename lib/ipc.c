@@ -61,9 +61,9 @@ ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
         r = sys_ipc_try_send(to_env, val, pg, perm);
         if (r == 0) break;
         if (r != -E_IPC_NOT_RECV) panic("error sending env: %e", r);
+        sys_yield();
     }
     // cprintf("[%08x] sent to [%08x]: val=%d\n", thisenv->env_id, to_env, val);
-    sys_yield();
 }
 
 // Find the first environment of the given type.  We'll use this to
