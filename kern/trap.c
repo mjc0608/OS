@@ -268,6 +268,11 @@ trap_dispatch(struct Trapframe *tf)
         case T_PGFLT:
             page_fault_handler(tf);
             return;
+        case T_DIVIDE:
+        case T_GPFLT:
+        case T_ILLOP:
+            user_fault_handler(tf);
+            return;
         case T_BRKPT:
         case T_DEBUG:
             monitor(tf);
@@ -369,6 +374,63 @@ trap(struct Trapframe *tf)
 	else
 		sched_yield();
 }
+
+void
+user_fault_handler(struct Trapframe *tf)
+{
+	uint32_t fault_va;
+
+	// Read processor's CR2 register to find the faulting address
+	fault_va = rcr2();
+
+	// Handle kernel-mode page faults.
+    if ((tf->tf_cs & 3) == 0) {
+	    print_trapframe(tf);
+        panic("fault in kernel mode\n");
+    }
+
+	// Destroy the environment that caused the fault.
+    void *fault_call = curenv->env_pgfault_upcall;
+
+    switch (tf->tf_trapno) {
+        case T_DIVIDE:
+            fault_call = curenv->env_divzero_upcall;
+            break;
+        case T_GPFLT:
+            fault_call = curenv->env_gpflt_upcall;
+            break;
+        case T_ILLOP:
+            fault_call = curenv->env_illop_upcall;
+            break;
+    }
+
+    if (fault_call == NULL) {
+    	print_trapframe(tf);
+	    env_destroy(curenv);
+    }
+
+    struct UTrapframe *utrapframe;
+    uint32_t user_esp = tf->tf_esp;
+    if (user_esp >= (UXSTACKTOP-PGSIZE) && user_esp < UXSTACKTOP) {
+        utrapframe = (struct UTrapframe*)(user_esp - sizeof(struct UTrapframe) - 4);
+    }
+    else {
+        utrapframe = (struct UTrapframe*)(UXSTACKTOP - sizeof(struct UTrapframe));
+    }
+
+    user_mem_assert(curenv, utrapframe, sizeof(struct UTrapframe), PTE_P | PTE_U | PTE_W);
+    utrapframe->utf_esp = tf->tf_esp;
+    utrapframe->utf_eflags = tf->tf_eflags | FL_IF;
+    utrapframe->utf_eip = tf->tf_eip;
+    utrapframe->utf_regs = tf->tf_regs;
+    utrapframe->utf_err = tf->tf_err;
+    utrapframe->utf_fault_va = fault_va;
+
+    curenv->env_tf.tf_eip = (uint32_t)fault_call;
+    curenv->env_tf.tf_esp = (uint32_t)utrapframe;
+    env_run(curenv);
+}
+
 
 
 void

@@ -35,6 +35,11 @@ void	exit(void);
 // pgfault.c
 void	set_pgfault_handler(void (*handler)(struct UTrapframe *utf));
 
+int	sys_env_set_user_fault_upcall(envid_t env, int faultid, void *upcall);
+void	set_divzero_handler(void (*handler)(struct UTrapframe *utf));
+void	set_gpflt_handler(void (*handler)(struct UTrapframe *utf));
+void	set_illop_handler(void (*handler)(struct UTrapframe *utf));
+
 // readline.c
 char*	readline(const char *buf);
 

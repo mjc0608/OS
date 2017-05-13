@@ -9,6 +9,7 @@
 
 // Assembly language pgfault entrypoint defined in lib/pfentry.S.
 extern void _pgfault_upcall(void);
+extern int uxstack_set;
 
 // Pointer to currently installed C-language pgfault handler.
 void (*_pgfault_handler)(struct UTrapframe *utf);
@@ -30,9 +31,10 @@ set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
 	if (_pgfault_handler == 0) {
 		// First time through!
 		// LAB 4: Your code here.
-        if (sys_page_alloc(0, (void*)(UXSTACKTOP-PGSIZE), PTE_U | PTE_W | PTE_P)) {
+        if (!uxstack_set && sys_page_alloc(0, (void*)(UXSTACKTOP-PGSIZE), PTE_U | PTE_W | PTE_P)) {
             panic("failed to alloc page\n");
         }
+        uxstack_set = 1;
 
         sys_env_set_pgfault_upcall(0, _pgfault_upcall);
 	}

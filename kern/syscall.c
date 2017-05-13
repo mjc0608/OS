@@ -154,6 +154,28 @@ sys_env_set_pgfault_upcall(envid_t envid, void *func)
     return 0;
 }
 
+static int
+sys_env_set_user_fault_upcall(envid_t envid, int faultid, void *func)
+{
+    struct Env *env;
+    if (envid2env(envid, &env, 1)<0) return -E_BAD_ENV;
+
+    switch (faultid) {
+        case T_DIVIDE:
+            env->env_divzero_upcall = func;
+            break;
+        case T_GPFLT:
+            env->env_gpflt_upcall = func;
+            break;
+        case T_ILLOP:
+            env->env_illop_upcall = func;
+            break;
+    }
+
+    return 0;
+
+}
+
 // Allocate a page of memory and map it at 'va' with permission
 // 'perm' in the address space of 'envid'.
 // The page's contents are set to 0.
@@ -474,6 +496,9 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
         case SYS_env_set_pgfault_upcall:
             //cprintf("env %x set user fault handler: 0x%x\n", a1, a2);
             ret = sys_env_set_pgfault_upcall(a1, (void*)a2);
+            break;
+        case SYS_env_set_user_fault_upcall:
+            ret = sys_env_set_user_fault_upcall(a1, a2, (void*)a3);
             break;
         case SYS_ipc_try_send:
             ret = sys_ipc_try_send(a1, a2, (void*)a3, a4);
