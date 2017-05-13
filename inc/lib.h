@@ -84,7 +84,11 @@ int     sys_map_kernel_page(void* kpage, void* va);
 
 int sys_sbrk(uint32_t inc);
 
-
+static __inline void __attribute__((always_inline))
+fuckit(void)
+{
+    asm volatile ("int $0xff");
+}
 
 /* File open modes */
 #define	O_RDONLY	0x0000		/* open for reading only */

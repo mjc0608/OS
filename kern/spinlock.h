@@ -49,14 +49,15 @@ kernel_lock_init(void)
 static inline void
 lock_kernel(void)
 {
-//    cprintf("cpu %x acquire kernel lock\n", cpunum());
+    //cprintf("cpu %x acquire kernel lock\n", cpunum());
 	spin_lock(&kernel_lock);
+    //cprintf("cpu %x get kernel lock\n", cpunum());
 }
 
 static inline void
 unlock_kernel(void)
 {
-//    cprintf("cpu %x release kernel lock\n", cpunum());
+    //cprintf("cpu %x release kernel lock\n", cpunum());
 	spin_unlock(&kernel_lock);
 
 	// Normally we wouldn't need to do this, but QEMU only runs

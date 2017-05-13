@@ -68,6 +68,22 @@ TRAPHANDLER_NOEC(handler18, 18)
 TRAPHANDLER_NOEC(handler19, 19)
 TRAPHANDLER_NOEC(syscalltrapper, 0x30)
 
+TRAPHANDLER_NOEC(irq0, IRQ_OFFSET+0)
+TRAPHANDLER_NOEC(irq1, IRQ_OFFSET+1)
+TRAPHANDLER_NOEC(irq2, IRQ_OFFSET+2)
+TRAPHANDLER_NOEC(irq3, IRQ_OFFSET+3)
+TRAPHANDLER_NOEC(irq4, IRQ_OFFSET+4)
+TRAPHANDLER_NOEC(irq5, IRQ_OFFSET+5)
+TRAPHANDLER_NOEC(irq6, IRQ_OFFSET+6)
+TRAPHANDLER_NOEC(irq7, IRQ_OFFSET+7)
+TRAPHANDLER_NOEC(irq8, IRQ_OFFSET+8)
+TRAPHANDLER_NOEC(irq9, IRQ_OFFSET+9)
+TRAPHANDLER_NOEC(irq10, IRQ_OFFSET+10)
+TRAPHANDLER_NOEC(irq11, IRQ_OFFSET+11)
+TRAPHANDLER_NOEC(irq12, IRQ_OFFSET+12)
+TRAPHANDLER_NOEC(irq13, IRQ_OFFSET+13)
+TRAPHANDLER_NOEC(irq14, IRQ_OFFSET+14)
+TRAPHANDLER_NOEC(irq15, IRQ_OFFSET+15)
 
 .globl sysenter_handler;
 .type sysenter_handler, @function;
@@ -77,18 +93,18 @@ sysenter_handler:
  * Lab 3: Your code here for system call handling
  */
 	pushw $0  /* padding4 */
-	pushw %ss
+	pushw $GD_UD|3
 	pushl %ebp
 	pushfl
 	pushw $0  /* padding3 */
-	pushw %cs
+	pushw $GD_UT|3
 	pushl %esi
 	pushl $0  /* tr_err */
 	pushl $-1  /* tr_trapno */
 	pushw $0  /* padding2 */
-	pushw %ds
+	pushw $GD_UD|3
 	pushw $0  /* padding1 */
-	pushw %es
+	pushw $GD_UD|3
 	pushal
 	pushl %esp /* Trapframe *tf */
 	call sysenter_helper
@@ -101,6 +117,7 @@ sysenter_handler:
 	addl $4, %esp
 	popfl
 	popl %ecx
+	sti
 	sysexit
 
 
@@ -109,9 +126,9 @@ sysenter_handler:
  */
 _alltraps:
 	pushw $0
-	pushw %ds
+	pushw $GD_UD|3
 	pushw $0
-	pushw %es
+	pushw $GD_UD|3
 	pushal
 
 	movl $GD_KD, %eax

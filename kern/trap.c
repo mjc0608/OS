@@ -91,6 +91,23 @@ trap_init(void)
     extern void handler19();
     extern void syscalltrapper();
 
+    extern void irq0();
+    extern void irq1();
+    extern void irq2();
+    extern void irq3();
+    extern void irq4();
+    extern void irq5();
+    extern void irq6();
+    extern void irq7();
+    extern void irq8();
+    extern void irq9();
+    extern void irq10();
+    extern void irq11();
+    extern void irq12();
+    extern void irq13();
+    extern void irq14();
+    extern void irq15();
+
     SETGATE(idt[T_DIVIDE], 0, GD_KT, handler0, 0);
     SETGATE(idt[T_DEBUG], 0, GD_KT, handler1, 0);
     SETGATE(idt[T_NMI], 0, GD_KT, handler2, 0);
@@ -111,6 +128,22 @@ trap_init(void)
     SETGATE(idt[T_SIMDERR], 0, GD_KT, handler19, 0);
     SETGATE(idt[T_SYSCALL], 0, GD_KT, syscalltrapper, 3);
 
+    SETGATE(idt[IRQ_OFFSET+0], 0, GD_KT, irq0, 0);
+    SETGATE(idt[IRQ_OFFSET+1], 0, GD_KT, irq1, 0);
+    SETGATE(idt[IRQ_OFFSET+2], 0, GD_KT, irq2, 0);
+    SETGATE(idt[IRQ_OFFSET+3], 0, GD_KT, irq3, 0);
+    SETGATE(idt[IRQ_OFFSET+4], 0, GD_KT, irq4, 0);
+    SETGATE(idt[IRQ_OFFSET+5], 0, GD_KT, irq5, 0);
+    SETGATE(idt[IRQ_OFFSET+6], 0, GD_KT, irq6, 0);
+    SETGATE(idt[IRQ_OFFSET+7], 0, GD_KT, irq7, 0);
+    SETGATE(idt[IRQ_OFFSET+8], 0, GD_KT, irq8, 0);
+    SETGATE(idt[IRQ_OFFSET+9], 0, GD_KT, irq9, 0);
+    SETGATE(idt[IRQ_OFFSET+10], 0, GD_KT, irq10, 0);
+    SETGATE(idt[IRQ_OFFSET+11], 0, GD_KT, irq11, 0);
+    SETGATE(idt[IRQ_OFFSET+12], 0, GD_KT, irq12, 0);
+    SETGATE(idt[IRQ_OFFSET+13], 0, GD_KT, irq13, 0);
+    SETGATE(idt[IRQ_OFFSET+14], 0, GD_KT, irq14, 0);
+    SETGATE(idt[IRQ_OFFSET+15], 0, GD_KT, irq15, 0);
 
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -262,6 +295,11 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle clock interrupts. Don't forget to acknowledge the
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
+    if (tf->tf_trapno == IRQ_OFFSET + 0) {
+        lapic_eoi();
+        sched_yield();
+        return;
+    }
 
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
@@ -278,8 +316,9 @@ trap(struct Trapframe *tf)
 {
 	// The environment may have set DF and some versions
 	// of GCC rely on DF being clear
-    cprintf("enter trap\n");
 	asm volatile("cld" ::: "cc");
+//    cprintf("env %x enter kernel: trap %d from %s\n", curenv->env_id,
+//            tf->tf_trapno, (tf->tf_cs & 3) == 3 ? "user" : "kernel");
 
 	// Halt the CPU if some other CPU has called panic()
 	extern char *panicstr;
@@ -384,23 +423,57 @@ page_fault_handler(struct Trapframe *tf)
 	// LAB 4: Your code here.
 
 	// Destroy the environment that caused the fault.
-	cprintf("[%08x] user fault va %08x ip %08x\n",
-		curenv->env_id, fault_va, tf->tf_eip);
-	print_trapframe(tf);
-	env_destroy(curenv);
+    void *pgfault_call = curenv->env_pgfault_upcall;
+    if (pgfault_call == NULL) {
+    	cprintf("[%08x] user fault va %08x ip %08x\n",
+	    	curenv->env_id, fault_va, tf->tf_eip);
+    	print_trapframe(tf);
+	    env_destroy(curenv);
+    }
+    //cprintf("UXSTACKTOP: %x\n", UXSTACKTOP);
+
+    struct UTrapframe *utrapframe;
+    uint32_t user_esp = tf->tf_esp;
+    if (user_esp >= (UXSTACKTOP-PGSIZE) && user_esp < UXSTACKTOP) {
+        utrapframe = (struct UTrapframe*)(user_esp - sizeof(struct UTrapframe) - 4);
+    }
+    else {
+        utrapframe = (struct UTrapframe*)(UXSTACKTOP - sizeof(struct UTrapframe));
+    }
+
+    cprintf("[ %x ]fault_va: %x, fault_eip: %x, fault_esp: %x, utrapframe: %x\n", curenv->env_id, fault_va, tf->tf_eip, tf->tf_esp, utrapframe);
+    //print_trapframe(tf);
+    user_mem_assert(curenv, utrapframe, sizeof(struct UTrapframe), PTE_P | PTE_U | PTE_W);
+    utrapframe->utf_esp = tf->tf_esp;
+    utrapframe->utf_eflags = tf->tf_eflags | FL_IF;
+    utrapframe->utf_eip = tf->tf_eip;
+    utrapframe->utf_regs = tf->tf_regs;
+    utrapframe->utf_err = tf->tf_err;
+    utrapframe->utf_fault_va = fault_va;
+
+    curenv->env_tf.tf_eip = (uint32_t)pgfault_call;
+    curenv->env_tf.tf_esp = (uint32_t)utrapframe;
+    //cprintf("goto: eip: %x, esp: %x\n", curenv->env_tf.tf_eip, curenv->env_tf.tf_esp);
+    env_run(curenv);
 }
 
 void
 sysenter_helper(struct Trapframe *tf) {
+    lock_kernel();
     uint32_t ret;
     curenv->env_tf = *tf;
-    lock_kernel();
+    //cprintf("env %x enter kernel: sysenter\n", curenv->env_id);
     ret = syscall(tf->tf_regs.reg_eax,
             tf->tf_regs.reg_edx,
             tf->tf_regs.reg_ecx,
             tf->tf_regs.reg_ebx,
             tf->tf_regs.reg_edi,
             0);
+    //curenv->env_tf.tf_regs.reg_eax = ret;
+    //env_run(curenv);
+
+    //assert(0);
     tf->tf_regs.reg_eax = ret;
+    //cprintf("cpu %x env %x enter user: sysexit\n", cpunum(), curenv->env_id);
     unlock_kernel();
 }

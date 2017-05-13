@@ -109,7 +109,7 @@ i386_init(void)
 #else
 	// Touch all you want.
 #if 1
-	ENV_CREATE(user_dumbfork, ENV_TYPE_USER);
+	ENV_CREATE(user_forktree, ENV_TYPE_USER);
 #endif
 
 #if 0

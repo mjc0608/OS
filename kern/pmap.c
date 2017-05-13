@@ -638,6 +638,7 @@ page_insert(pde_t *pgdir, struct Page *pp, void *va, int perm)
 	if (*pte & PTE_P) {
 		if (page2pa(pp) == PTE_ADDR(*pte)) {
 			*pte = PTE_ADDR(*pte) | perm | PTE_P;
+			tlb_invalidate(pgdir, va);
 			return 0;
 		}
 		else {

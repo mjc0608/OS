@@ -52,7 +52,7 @@ sched_yield(void)
 #endif
     //cprintf("cpu %d enter yield\n", cpunum());
     if (curenv==NULL) {
-        cprintf("cpu %d first round\n", cpunum());
+        //cprintf("cpu %d first round\n", cpunum());
         goto null_round;
     }
 
@@ -74,7 +74,7 @@ sched_yield(void)
         envs[iterenv_index].env_status == ENV_RUNNING) {
         env_run(envs+iterenv_index);
     }
-    cprintf("cpu %d cannot find runable\n", cpunum());
+    //cprintf("cpu %d cannot find runable\n", cpunum());
 
 null_round:
 	// For debugging and testing purposes, if there are no
@@ -87,7 +87,7 @@ null_round:
             break;
     }
     if (i == NENV) {
-        cprintf("Nevero more runnable environments!\n");
+        cprintf("No more runnable environments!\n");
         while (1)
             monitor(NULL);
     }
@@ -96,6 +96,6 @@ null_round:
 	idle = &envs[cpunum()];
 	if (!(idle->env_status == ENV_RUNNABLE || idle->env_status == ENV_RUNNING))
 		panic("CPU %d: No idle environment!", cpunum());
-    cprintf("cpu %d start idle\n", cpunum());
+    //cprintf("cpu %d start idle\n", cpunum());
 	env_run(idle);
 }

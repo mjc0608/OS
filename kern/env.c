@@ -266,6 +266,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 
 	// Enable interrupts while in user mode.
 	// LAB 4: Your code here.
+    e->env_tf.tf_eflags |= FL_IF;
 
 	// Clear the page fault handler until user installs one.
 	e->env_pgfault_upcall = 0;
@@ -387,7 +388,7 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
         if (ph->p_type == ELF_PROG_LOAD) {
             region_alloc(e, (void*)ph->p_va, ph->p_memsz);
             memmove((void*)ph->p_va, binary+ph->p_offset, ph->p_filesz);
-            memset((uint32_t*)ph->p_va+ph->p_filesz, 0, ph->p_memsz-ph->p_filesz);
+            memset((uint32_t*)(ph->p_va+ph->p_filesz), 0, ph->p_memsz-ph->p_filesz);
             if (e->heap_top < ph->p_va+ph->p_memsz) {
                 e->heap_top = ph->p_va+ph->p_memsz;
             }
@@ -570,8 +571,15 @@ env_run(struct Env *e)
     curenv = e;
     curenv->env_status = ENV_RUNNING;
     curenv->env_runs++;
+	if ((e->env_tf.tf_cs & 3) == 3)
+        curenv->env_tf.tf_eflags |= FL_IF;
+    else {
+        print_trapframe(&e->env_tf);
+        assert(0);
+    }
     lcr3(PADDR(curenv->env_pgdir));
 
+    //cprintf("cpu %x env %x enter user by env_run\n", cpunum(), e->env_id);
     unlock_kernel();
     env_pop_tf(&curenv->env_tf);
 }
