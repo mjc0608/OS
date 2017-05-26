@@ -703,9 +703,9 @@ page_remove(pde_t *pgdir, void *va)
 	struct Page *pg = page_lookup(pgdir, va, &pte);
 
 	if (pg != NULL) {
-		tlb_invalidate(pgdir, va);
 		page_decref(pg);
 		*pte = 0;
+		tlb_invalidate(pgdir, va);
 	}
 
 
@@ -761,6 +761,10 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 	return 0;
 
 failed:
+    do {
+        pte_t *pte = pgdir_walk(env->env_pgdir, (void*)i, 0);
+        cprintf("check perm: %x:%x\n", perm, *pte&0x1ff);
+    } while(0);
     user_mem_check_addr = i < (uint32_t)va ? (uint32_t)va : i;
     return -E_FAULT;
 }

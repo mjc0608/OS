@@ -65,7 +65,7 @@ alloc_block(void)
 
     int i;
 
-    for (i=0; i<super->s_nblocks; i++) {
+    for (i=1; i<super->s_nblocks; i++) {
         if (block_is_free(i)) {
             bitmap[i/32] &= ~(1<<(i%32));
             flush_block(bitmap);
@@ -144,6 +144,7 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
 {
 	// LAB 5: Your code here.
 	//panic("file_block_walk not implemented");
+    int r;
 
     if (!f || !ppdiskbno) return -E_INVAL;
     if (filebno >= NDIRECT + NINDIRECT) return -E_INVAL;
@@ -157,10 +158,13 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
         if (alloc == 0) {
             return -E_NOT_FOUND;
         }
-        f->f_indirect = alloc_block();
-        if (f->f_indirect < 0) return -E_NO_DISK;
-        memset(diskaddr(f->f_indirect), 0, BLKSIZE);
-        flush_block(diskaddr(f->f_indirect));
+
+        r = alloc_block();
+        if (r < 0) return r;
+        void* va = diskaddr(r);
+        memset(va, 0, BLKSIZE);
+        flush_block(va);
+        f->f_indirect = r;
     }
 
     uint32_t *ind = diskaddr(f->f_indirect);
@@ -197,7 +201,6 @@ file_get_block(struct File *f, uint32_t filebno, char **blk)
         memset(diskaddr(r), 0, BLKSIZE);
         flush_block(diskaddr(r));
     }
-    //cprintf("fuckit: diskbno=%d\n", *diskbno);
     *blk = diskaddr(*diskbno);
     return 0;
 }

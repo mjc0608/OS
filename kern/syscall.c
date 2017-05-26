@@ -424,7 +424,7 @@ sys_ipc_recv(void *dstva)
     curenv->env_ipc_dstva = dstva;
     curenv->env_ipc_recving = 1;
 
-    // cprintf("thisenv=%x\n", curenv->env_id);
+    //cprintf("thisenv=%x\n", curenv->env_id);
 
 	return 0;
 }
