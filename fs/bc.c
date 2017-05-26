@@ -24,6 +24,38 @@ va_is_dirty(void *va)
 	return (vpt[PGNUM(va)] & PTE_D) != 0;
 }
 
+static bool
+va_is_accessed(void *va)
+{
+    return (vpt[PGNUM(va)] & PTE_A) != 0;
+}
+
+static int
+va_get_recent_level(void *va)
+{
+    return ((vpt[PGNUM(va)] & PTE_AVAIL) >> 9) & 0x1;
+}
+
+static void
+va_set_recent_level(void *va, int level)
+{
+    int perm = PTE_W | PTE_U | PTE_P | ((level&0x1)<<9);
+    int r = sys_page_map(0, va, 0, va, perm);
+    if (r < 0) panic("failed to remap");
+}
+
+static void
+va_reduce_recent_level(void *va)
+{
+    int level = va_get_recent_level(va);
+    if (level == 0) {
+        sys_page_unmap(0, va);
+        return;
+    }
+    level--;
+    va_set_recent_level(va, level);
+}
+
 // Fault any disk block that is read or written in to memory by
 // loading it from disk.
 // Hint: Use ide_read and BLKSECTS.
@@ -57,12 +89,25 @@ bc_pgfault(struct UTrapframe *utf)
     r = ide_read(blockno * BLKSECTS, round_addr, BLKSECTS);
     if (r < 0) panic("cannot read from disk");
     r = sys_page_map(0, round_addr, 0, round_addr, PTE_W | PTE_U | PTE_P);
+    if (r < 0) panic("cannot remap page");
 
 	// Check that the block we read was allocated. (exercise for
 	// the reader: why do we do this *after* reading the block
 	// in?)
 	if (bitmap && block_is_free(blockno))
 		panic("reading free block %08x\n", blockno);
+
+
+    // eviction
+    uint32_t *e_addr;
+    for (e_addr = (uint32_t*)DISKMAP; e_addr<(uint32_t*)(DISKMAP+DISKSIZE); e_addr+=PGSIZE) {
+        if (e_addr == round_addr) continue;
+        if (va_is_mapped(e_addr)) {
+            if (!va_is_accessed(e_addr)) {
+                va_reduce_recent_level(e_addr);
+            }
+        }
+    }
 }
 
 // Flush the contents of the block containing VA out to disk if
