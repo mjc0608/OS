@@ -2,37 +2,32 @@
 
 #include <inc/syscall.h>
 #include <inc/lib.h>
+#include <inc/x86.h>
 
 static inline int32_t
 syscall(int num, int check, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
 {
 	int32_t ret;
-	asm volatile("pushl %%ecx\n\t"
-		 "pushl %%edx\n\t"
-	         "pushl %%ebx\n\t"
-		 "pushl %%esp\n\t"
-		 "pushl %%ebp\n\t"
-		 "pushl %%esi\n\t"
-		 "pushl %%edi\n\t"
-				 
-                 //Lab 3: Your code here
 
-                 "popl %%edi\n\t"
-                 "popl %%esi\n\t"
-                 "popl %%ebp\n\t"
-                 "popl %%esp\n\t"
-                 "popl %%ebx\n\t"
-                 "popl %%edx\n\t"
-                 "popl %%ecx\n\t"
-                 
-                 : "=a" (ret)
-                 : "a" (num),
-                   "d" (a1),
-                   "c" (a2),
-                   "b" (a3),
-                   "D" (a4)
-                 : "cc", "memory");
+	asm volatile(
+         //Lab 3: Your code here
+         "pushl %%ebp\n\t"
 
+         "movl %%esp, %%ebp\n\t"
+         "leal syscall_back%=, %%esi\n\t"
+         "sysenter\n"
+         "syscall_back%=:\n\t"
+
+         "movl %%ebp, %%esp\n\t"
+         "popl %%ebp\n\t"
+
+         : "=a" (ret)
+         : "a" (num),
+           "d" (a1),
+           "c" (a2),
+           "b" (a3),
+           "D" (a4)
+         : "cc", "memory", "%esi");
 
 	if(check && ret > 0)
 		panic("syscall %d returned %d (> 0)", num, ret);
@@ -85,7 +80,10 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 int
 sys_page_map(envid_t srcenv, void *srcva, envid_t dstenv, void *dstva, int perm)
 {
-	return syscall(SYS_page_map, 1, srcenv, (uint32_t) srcva, dstenv, (uint32_t) dstva, perm);
+	//return syscall(SYS_page_map, 1, srcenv, (uint32_t) srcva, dstenv, (uint32_t) dstva, perm);
+    uint32_t envs = (srcenv<<16) | (0xffff & dstenv);
+    //cprintf("envs: %x %x %x\n", envs, srcenv, dstenv);
+    return syscall(SYS_page_map, 1, envs, (uint32_t) srcva, (uint32_t) dstva, perm, 0);
 }
 
 int
@@ -111,7 +109,14 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 int
 sys_env_set_pgfault_upcall(envid_t envid, void *upcall)
 {
+    //cprintf("syscall client: upcall: %x\n", upcall);
 	return syscall(SYS_env_set_pgfault_upcall, 1, envid, (uint32_t) upcall, 0, 0, 0);
+}
+
+int
+sys_env_set_user_fault_upcall(envid_t envid, int faultid, void *upcall)
+{
+    return syscall(SYS_env_set_user_fault_upcall, 1, envid, faultid, (uint32_t)upcall, 0, 0);
 }
 
 int

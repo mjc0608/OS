@@ -59,6 +59,16 @@ i386_init(void)
 	cons_init();
 
 	cprintf("6828 decimal is %o octal!\n", 6828);
+	// cprintf("6828 decimal is %o octal!%n\n%n", 6828, &chnum1, &chnum2);
+	// cprintf("pading space in the right to number 22: %-8d.\n", 22);
+	// cprintf("chnum1: %d chnum2: %d\n", chnum1, chnum2);
+	// cprintf("%n", NULL);
+	// memset(ntest, 0xd, sizeof(ntest) - 1);
+	// cprintf("%s%n", ntest, &chnum1); 
+	// cprintf("chnum1: %d\n", chnum1);
+	// cprintf("show me the sign: %+d, %+d\n", 1024, -1024);
+
+    kernel_lock_init();
 
 	// Lab 2 memory management initialization functions
 	mem_init();
@@ -74,9 +84,15 @@ i386_init(void)
 	// Lab 4 multitasking initialization functions
 	pic_init();
 
+    // Should always have idle processes at first.
+	int i;
+	for (i = 0; i < NCPU; i++)
+		ENV_CREATE(user_idle, ENV_TYPE_IDLE);
+
 	// Acquire the big kernel lock before waking up APs
 	// Your code here:
 
+    lock_kernel();
 	// Starting non-boot CPUs
 	boot_aps();
 
@@ -86,10 +102,6 @@ i386_init(void)
 	lock_kernel();
 #endif
 
-	// Should always have idle processes at first.
-	int i;
-	for (i = 0; i < NCPU; i++)
-		ENV_CREATE(user_idle, ENV_TYPE_IDLE);
 
 	// Start fs.
 	ENV_CREATE(fs_fs, ENV_TYPE_FS);
@@ -164,8 +176,12 @@ mp_main(void)
 	//
 	// Your code here:
 
+//    cprintf("cpu %x start yeilding\n", cpunum());
+    lock_kernel();
+    sched_yield();
+
 	// Remove this after you finish Exercise 4
-	for (;;);
+	//for (;;);
 }
 
 /*

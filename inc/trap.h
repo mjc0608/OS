@@ -39,6 +39,11 @@
 #define IRQ_IDE         14
 #define IRQ_ERROR       19
 
+
+#define SYSENTER_CS_MSR 0x174
+#define SYSENTER_ESP_MSR 0x175
+#define SYSENTER_EIP_MSR 0x176
+
 #ifndef __ASSEMBLER__
 
 #include <inc/types.h>
