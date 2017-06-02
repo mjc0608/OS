@@ -55,7 +55,8 @@ holding(struct spinlock *lock)
 	return lock->locked && lock->cpu == thiscpu;
 #else
 	//LAB 4: Your code here
-	panic("ticket spinlock: not implemented yet");
+	//panic("ticket spinlock: not implemented yet");
+    return lock->cpu == thiscpu;
 
 #endif
 }
@@ -68,7 +69,10 @@ __spin_initlock(struct spinlock *lk, char *name)
 	lk->locked = 0;
 #else
 	//LAB 4: Your code here
+    lk->own = 0;
+    lk->next = 0;
 
+    cprintf("init lock: own=1, next=0\n");
 #endif
 
 #ifdef DEBUG_SPINLOCK
@@ -97,6 +101,13 @@ spin_lock(struct spinlock *lk)
 		asm volatile ("pause");
 #else
 	//LAB 4: Your code here
+//    cprintf("request_lock: cpu: %u, own: %u, next: %u\n", thiscpu->cpu_id, lk->own, lk->next);
+    unsigned my_id = atomic_return_and_add(&(lk->next), 1);
+    while (lk->own != my_id) {
+    //    cprintf("cpu: %u, own: %u, ticket: %u\n", thiscpu->cpu_id, lk->own, my_id);
+        asm volatile ("pause");
+    }
+//    cprintf("get_lock: cpu: %u, ticket: %u, own: %u, next: %u\n", thiscpu->cpu_id, my_id, lk->own, lk->next);
 
 #endif
 
@@ -149,5 +160,9 @@ spin_unlock(struct spinlock *lk)
 	xchg(&lk->locked, 0);
 #else
 	//LAB 4: Your code here
+
+//    cprintf("release_lock: cpu: %u, own: %u, next: %u\n", thiscpu->cpu_id, lk->own, lk->next);
+//    atomic_return_and_add(&(lk->own), 1);
+    lk->own++;
 #endif
 }

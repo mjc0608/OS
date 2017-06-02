@@ -56,11 +56,17 @@ struct Env {
 	uint32_t env_runs;		// Number of times environment has run
 	int env_cpunum;			// The CPU that the env is running on
 
+	// LAB3: might need code here for implementation of sbrk
+    uint32_t heap_top;
+
 	// Address space
 	pde_t *env_pgdir;		// Kernel virtual address of page dir
 
 	// Exception handling
 	void *env_pgfault_upcall;	// Page fault upcall entry point
+    void *env_divzero_upcall;
+    void *env_gpflt_upcall;
+    void *env_illop_upcall;
 
 	// Lab 4 IPC
 	bool env_ipc_recving;		// Env is blocked receiving
@@ -68,8 +74,6 @@ struct Env {
 	uint32_t env_ipc_value;		// Data value sent to us
 	envid_t env_ipc_from;		// envid of the sender
 	int env_ipc_perm;		// Perm of page mapping received
-
-	// LAB3: might need code here for implementation of sbrk
 
 };
 

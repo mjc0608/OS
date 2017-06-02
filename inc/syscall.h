@@ -21,6 +21,8 @@ enum {
 	SYS_ipc_try_send,
 	SYS_ipc_recv,
 
+    SYS_env_set_user_fault_upcall,
+
 	SYS_sbrk,
 	SYS_time_msec,
 	NSYSCALLS

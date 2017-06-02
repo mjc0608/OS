@@ -2,6 +2,8 @@
 #define JOS_INC_SPINLOCK_H
 
 #include <inc/types.h>
+#include <kern/cpu.h>
+#include <inc/stdio.h>
 
 // After you implemented ticket_spinlock,
 // define USE_TICKET_SPIN_LOCK.
@@ -17,7 +19,7 @@ struct spinlock {
 #ifndef USE_TICKET_SPIN_LOCK
 	unsigned locked;   // Is the lock held?
 #else
-	unsigned own;
+	volatile unsigned own;
 	unsigned next;
 #endif
 
@@ -39,14 +41,23 @@ void spin_unlock(struct spinlock *lk);
 extern struct spinlock kernel_lock;
 
 static inline void
+kernel_lock_init(void)
+{
+    spin_initlock(&kernel_lock);
+}
+
+static inline void
 lock_kernel(void)
 {
+    //cprintf("cpu %x acquire kernel lock\n", cpunum());
 	spin_lock(&kernel_lock);
+    //cprintf("cpu %x get kernel lock\n", cpunum());
 }
 
 static inline void
 unlock_kernel(void)
 {
+    //cprintf("cpu %x release kernel lock\n", cpunum());
 	spin_unlock(&kernel_lock);
 
 	// Normally we wouldn't need to do this, but QEMU only runs

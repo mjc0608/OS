@@ -40,6 +40,11 @@ void	exit(void);
 // pgfault.c
 void	set_pgfault_handler(void (*handler)(struct UTrapframe *utf));
 
+int	sys_env_set_user_fault_upcall(envid_t env, int faultid, void *upcall);
+void	set_divzero_handler(void (*handler)(struct UTrapframe *utf));
+void	set_gpflt_handler(void (*handler)(struct UTrapframe *utf));
+void	set_illop_handler(void (*handler)(struct UTrapframe *utf));
+
 // readline.c
 char*	readline(const char *buf);
 
@@ -135,6 +140,11 @@ envid_t	spawn(const char *program, const char **argv);
 envid_t	spawnl(const char *program, const char *arg0, ...);
 
 
+static __inline void __attribute__((always_inline))
+fuckit(void)
+{
+    asm volatile ("int $0xff");
+}
 
 /* File open modes */
 #define	O_RDONLY	0x0000		/* open for reading only */

@@ -17,3 +17,5 @@
 /sol?/
 /conf/lab.mk
 cscope.out
+cscope.in.out
+cscope.po.out
