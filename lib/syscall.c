@@ -143,3 +143,19 @@ sys_time_msec(void)
 	return (unsigned int) syscall(SYS_time_msec, 0, 0, 0, 0, 0, 0);
 }
 
+int
+sys_net_try_send(uint8_t* data, int len)
+{
+    //cprintf("user fucking: %08x, %d\n", data, len);
+    return syscall(SYS_net_try_send, 0, (uint32_t)data, len, 0, 0, 0);
+}
+
+int
+sys_net_try_receive(uint8_t* data) {
+    return syscall(SYS_net_try_receive, 0, (uint32_t)data, 0, 0, 0, 0);
+}
+
+void
+sys_get_mac_addr(uint32_t* hi, uint32_t* lo) {
+    syscall(SYS_get_mac_addr, 0, (uint32_t)hi, (uint32_t)lo, 0, 0, 0);
+}

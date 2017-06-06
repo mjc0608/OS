@@ -13,6 +13,7 @@
 #include <kern/sched.h>
 #include <kern/time.h>
 #include <kern/spinlock.h>
+#include <kern/e1000.h>
 
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
@@ -474,7 +475,28 @@ static int
 sys_time_msec(void)
 {
 	// LAB 6: Your code here.
-	panic("sys_time_msec not implemented");
+	//panic("sys_time_msec not implemented");
+
+    return time_msec();
+}
+
+// send_packet
+static int
+sys_net_try_send(uint8_t* data, int len) {
+    user_mem_assert(curenv, data, len, PTE_P|PTE_U|PTE_W);
+    return transmit_pkt(data, len);
+}
+
+// receive packet
+static int
+sys_net_try_receive(uint8_t* data) {
+    user_mem_assert(curenv, data, 2048, PTE_P|PTE_U|PTE_W);
+    return receive_pkt(data);
+}
+
+static void
+sys_get_mac_addr(uint32_t *hi, uint32_t* lo) {
+    return e1000_get_mac_addr(hi, lo);
 }
 
 
@@ -552,6 +574,19 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
             break;
         case SYS_env_set_trapframe:
             ret = sys_env_set_trapframe(a1, (struct Trapframe*)a2);
+            break;
+        case SYS_time_msec:
+            ret = sys_time_msec();
+            break;
+        case SYS_net_try_send:
+            ret = sys_net_try_send((uint8_t *)a1, a2);
+            break;
+        case SYS_net_try_receive:
+            ret = sys_net_try_receive((uint8_t *)a1);
+            break;
+        case SYS_get_mac_addr:
+            ret = 0;
+            sys_get_mac_addr((uint32_t*)a1, (uint32_t*)a2);
             break;
     }
 

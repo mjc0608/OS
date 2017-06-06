@@ -139,6 +139,9 @@ int     nsipc_socket(int domain, int type, int protocol);
 envid_t	spawn(const char *program, const char **argv);
 envid_t	spawnl(const char *program, const char *arg0, ...);
 
+int sys_net_try_send(uint8_t* data, int len);
+int sys_net_try_receive(uint8_t* data);
+void sys_get_mac_addr(uint32_t* hi, uint32_t* lo);
 
 static __inline void __attribute__((always_inline))
 fuckit(void)
